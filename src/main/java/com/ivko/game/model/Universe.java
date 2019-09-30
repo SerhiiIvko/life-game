@@ -1,12 +1,17 @@
 package com.ivko.game.model;
 
+import com.ivko.game.service.InitialData;
+
 public class Universe {
     private Cell[][] currentGeneration;
     private Cell[][] nextGeneration;
+    private int iterations;
     private int width;
     private int height;
 
-    public void init(boolean[][] startArray) {
+    public void init(InitialData initialData) {
+        boolean[][] startArray = initialData.getInitGeneration();
+        iterations = initialData.getIterations();
         width = startArray.length;
         nextGeneration = new Cell[width][];
         for (int i = 0; i < width; ++i) {
@@ -19,26 +24,43 @@ public class Universe {
     }
 
     public void start() {
-        while (wasChanges()) {
+        while (shouldContinue()) {
             predictNeighbours();
             step();
+            iterations--;
         }
     }
 
-    private boolean wasChanges() {
-        boolean wasChanges = false;
-        if (currentGeneration != null && nextGeneration != null) {
-            all:
-            for (int i = 0; i < width; ++i) {
-                for (int j = 0; j < height; ++j) {
-                    if (currentGeneration[i][j].isAlive != nextGeneration[i][j].isAlive) {
-                        wasChanges = true;
-                        break all;
+    public boolean[][] getFinalData() {
+        boolean[][] finalData = new boolean[width][height];
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; ++j) {
+                finalData[i][j] = currentGeneration[i][j].isAlive();
+            }
+        }
+        return finalData;
+    }
+
+    private boolean shouldContinue() {
+        boolean shouldContinue;
+        if (iterations == 0) {
+            shouldContinue = false;
+        } else {
+            boolean wasChanges = false;
+            if (currentGeneration != null && nextGeneration != null) {
+                all:
+                for (int i = 0; i < width; ++i) {
+                    for (int j = 0; j < height; ++j) {
+                        if (currentGeneration[i][j].isAlive != nextGeneration[i][j].isAlive) {
+                            wasChanges = true;
+                            break all;
+                        }
                     }
                 }
             }
+            shouldContinue = wasChanges || currentGeneration == null;
         }
-        return wasChanges || currentGeneration == null;
+        return shouldContinue;
     }
 
     private void step() {
@@ -66,7 +88,7 @@ public class Universe {
             }
             System.out.println();
         }
-        System.out.println("-----------------------");
+        System.out.println();
     }
 
     private Cell[][] cloneCurrent() {
@@ -91,22 +113,16 @@ public class Universe {
         }
     }
 
-    private void handleNeighbours(int x, int y) {
-        nextGeneration[x][y].neighbourCounter++;
-        if (!nextGeneration[x][y].isAlive && nextGeneration[x][y].neighbourCounter == 3) {
-            nextGeneration[x][y].isAlive = true;
-        } else if (nextGeneration[x][y].isAlive
-                && (nextGeneration[x][y].neighbourCounter < 2 || nextGeneration[x][y].neighbourCounter > 3)) {
-            nextGeneration[x][y].isAlive = false;
-        }
-    }
-
     private static class Cell {
         boolean isAlive;
         int neighbourCounter = 0;
 
         Cell(boolean isAlive) {
             this.isAlive = isAlive;
+        }
+
+        boolean isAlive() {
+            return isAlive;
         }
     }
 
@@ -119,9 +135,7 @@ public class Universe {
         static final Neighbour NE = new Neighbour(1, -1);
         static final Neighbour SW = new Neighbour(-1, 1);
         static final Neighbour SE = new Neighbour(1, 1);
-
         static final Neighbour[] NEIGHBOURS = {NW, N, NE, E, SE, S, SW, W};
-
         int x;
         int y;
 
